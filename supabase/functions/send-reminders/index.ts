@@ -1,0 +1,171 @@
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+interface Subscription {
+  id: string
+  user_id: string
+  name: string
+  amount: number
+  currency: string
+  next_billing_date: string
+}
+
+interface Profile {
+  id: string
+  email: string
+  full_name: string
+  preferences: {
+    notifications?: {
+      email?: boolean
+    }
+  }
+}
+
+serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  try {
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    // Get current date and dates for reminder checks
+    const today = new Date()
+    const oneDayFromNow = new Date(today)
+    oneDayFromNow.setDate(today.getDate() + 1)
+    
+    const threeDaysFromNow = new Date(today)
+    threeDaysFromNow.setDate(today.getDate() + 3)
+    
+    const sevenDaysFromNow = new Date(today)
+    sevenDaysFromNow.setDate(today.getDate() + 7)
+
+    // Get subscriptions that need reminders
+    const { data: subscriptions, error: subsError } = await supabaseClient
+      .from('subscriptions')
+      .select('*, profiles!inner(email, full_name, preferences)')
+      .eq('status', 'active')
+      .or(`next_billing_date.eq.${oneDayFromNow.toISOString().split('T')[0]},next_billing_date.eq.${threeDaysFromNow.toISOString().split('T')[0]},next_billing_date.eq.${sevenDaysFromNow.toISOString().split('T')[0]}`)
+
+    if (subsError) throw subsError
+
+    const emailsSent = []
+    const errors = []
+
+    // Process each subscription
+    for (const sub of (subscriptions as any[])) {
+      const profile = sub.profiles as Profile
+      
+      // Check if user has email notifications enabled
+      if (profile.preferences?.notifications?.email === false) {
+        continue
+      }
+
+      // Calculate days until billing
+      const billingDate = new Date(sub.next_billing_date)
+      const daysUntil = Math.ceil((billingDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+
+      // Send email via Resend (you'll need to set up Resend API key)
+      try {
+        const emailResponse = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${Deno.env.get('RESEND_API_KEY')}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: 'BillPing <reminders@billping.app>',
+            to: [profile.email],
+            subject: `Reminder: ${sub.name} payment in ${daysUntil} day${daysUntil > 1 ? 's' : ''}`,
+            html: `
+              <!DOCTYPE html>
+              <html>
+                <head>
+                  <style>
+                    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; color: #0f0f0f; }
+                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                    .header { background: #0f0f0f; color: #ffffff; padding: 20px; text-align: center; border: 2px solid #0f0f0f; }
+                    .content { background: #ffffff; padding: 30px; border: 2px solid #0f0f0f; border-top: none; }
+                    .amount { font-size: 32px; font-weight: bold; color: #ec4899; margin: 20px 0; }
+                    .button { display: inline-block; background: #0f0f0f; color: #ffffff; padding: 12px 24px; text-decoration: none; font-weight: bold; border: 2px solid #0f0f0f; box-shadow: 4px 4px 0px 0px #0f0f0f; margin: 20px 0; }
+                    .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+                  </style>
+                </head>
+                <body>
+                  <div class="container">
+                    <div class="header">
+                      <h1 style="margin: 0; font-size: 24px;">💸 BILLPING REMINDER</h1>
+                    </div>
+                    <div class="content">
+                      <p>Hey ${profile.full_name || 'there'},</p>
+                      <p>Just a heads up: your <strong>${sub.name}</strong> subscription is coming up!</p>
+                      
+                      <div class="amount">
+                        ${sub.currency === 'USD' ? '$' : sub.currency === 'EUR' ? '€' : sub.currency === 'GBP' ? '£' : '৳'}${sub.amount.toFixed(2)}
+                      </div>
+                      
+                      <p><strong>Due in ${daysUntil} day${daysUntil > 1 ? 's' : ''}</strong> on ${new Date(sub.next_billing_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+                      
+                      <p>Want to review or cancel? Head to your dashboard:</p>
+                      
+                      <a href="${Deno.env.get('NEXT_PUBLIC_SITE_URL')}/dashboard/subscription/${sub.id}" class="button">
+                        View Subscription
+                      </a>
+                      
+                      <p style="margin-top: 30px; color: #6b7280; font-size: 14px;">
+                        Don't want these reminders? Update your notification preferences in settings.
+                      </p>
+                    </div>
+                    <div class="footer">
+                      <p>BillPing - Stop burning money on forgotten subscriptions</p>
+                      <p>Built with hate for hidden fees 💀</p>
+                    </div>
+                  </div>
+                </body>
+              </html>
+            `,
+          }),
+        })
+
+        if (!emailResponse.ok) {
+          const errorData = await emailResponse.json()
+          errors.push({ subscription: sub.name, error: errorData })
+        } else {
+          emailsSent.push({ subscription: sub.name, user: profile.email, daysUntil })
+        }
+      } catch (emailError) {
+        errors.push({ subscription: sub.name, error: emailError.message })
+      }
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        emailsSent: emailsSent.length,
+        errors: errors.length,
+        details: { emailsSent, errors },
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      }
+    )
+  } catch (error) {
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      }
+    )
+  }
+})
