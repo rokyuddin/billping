@@ -1,7 +1,7 @@
 
 export default function SocialProofSection() {
   return (
-      <section className="py-20 border-b-2 border-border bg-background">
+      <section className="py-20 bg-background">
           <div className="container mx-auto px-4">
             <div className="grid md:grid-cols-2 gap-12 items-center">
               <div>

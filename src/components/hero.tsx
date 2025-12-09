@@ -3,14 +3,14 @@ import Link from 'next/link'
 
 export default function HeroSection() {
   return (
-     <section className="py-20 md:py-32 border-b-2 border-border bg-background relative overflow-hidden">
+     <section className="py-20 md:py-32  bg-background relative overflow-hidden">
           <div className="absolute top-0 right-0 w-1/3 h-full bg-accent/20 -skew-x-12 translate-x-1/2 border-l-2 border-border hidden lg:block"></div>
           <div className="container mx-auto px-4 relative z-10">
             <div className="max-w-3xl">
               <div className="inline-block bg-chart-4 border-2 border-border px-3 py-1 font-bold text-xs uppercase tracking-wider mb-6 brutal-shadow-sm -rotate-2">
                 Beta Access Open
               </div>
-              <h1 className="font-heading text-5xl md:text-7xl font-bold mb-6 tracking-tight">
+              <h1 className="font-heading text-5xl md:text-7xl font-bold leading-20 mb-6 tracking-tight">
                 STOP BURNING MONEY ON <span className="bg-primary text-primary-foreground px-2">FORGOTTEN</span> SUBSCRIPTIONS.
               </h1>
               <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-xl leading-relaxed">

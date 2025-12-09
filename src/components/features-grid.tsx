@@ -3,7 +3,7 @@ import React from 'react'
 
 export default function FeaturesGridSection() {
   return (
-      <section id="features" className="py-20 bg-muted/30 border-b-2 border-border">
+      <section id="features" className="py-20 bg-muted/30">
           <div className="container mx-auto px-4">
             <div className="mb-16">
               <h2 className="font-heading text-4xl md:text-5xl font-bold mb-4">WHY YOU NEED THIS.</h2>

@@ -1,6 +1,6 @@
+import SettingsClient from '@/components/dashboard/settings-client'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import SettingsClient from './settings-client'
 
 export default async function SettingsPage() {
   const supabase = await createClient()

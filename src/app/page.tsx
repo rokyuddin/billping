@@ -5,8 +5,12 @@ import PricingSection from "@/components/pricing";
 import SocialProofSection from "@/components/social-proof";
 import FeaturesGridSection from "@/components/features-grid";
 import HeroSection from "@/components/hero";
+import { createClient } from "@/lib/supabase/server";
+import AuthButtons from "@/components/auth-buttons";
 
-export default function Home() {
+export default async function Home() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
   return (
     <div className="min-h-screen flex flex-col font-sans">
       {/* Header */}
@@ -23,14 +27,7 @@ export default function Home() {
             <Link href="#pricing" className="hover:underline decoration-2 underline-offset-4">Pricing</Link>
             <Link href="#faq" className="hover:underline decoration-2 underline-offset-4">FAQ</Link>
           </nav>
-          <div className="flex gap-4">
-            <Link href="/login" className="font-medium hover:underline decoration-2 underline-offset-4 flex items-center">
-              Login
-            </Link>
-            <Link href="/signup" className="brutal-btn px-4 py-2 font-bold text-sm">
-              Get Started
-            </Link>
-          </div>
+<AuthButtons user={user} />
         </div>
       </header>
 

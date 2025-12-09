@@ -3,9 +3,10 @@
 import { User } from '@supabase/supabase-js'
 import Link from 'next/link'
 import { ArrowLeft, Save } from 'lucide-react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import PushNotificationToggle from '@/components/push-notification-toggle'
 
 type Profile = {
   id: string
@@ -33,6 +34,8 @@ export default function SettingsClient({
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
+  const checkboxRef = useRef<HTMLInputElement>(null)
+  const [pushEnabled, setPushEnabled] = useState(profile?.preferences?.notifications?.push ?? false)
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -192,19 +195,25 @@ export default function SettingsClient({
                 />
               </div>
 
-              <div className="flex items-center justify-between p-4 border-2 border-border">
-                <div>
-                  <p className="font-bold">Push Notifications</p>
-                  <p className="text-sm text-muted-foreground">Receive browser push notifications</p>
-                </div>
-                <input
-                  type="checkbox"
-                  id="push_notifications"
-                  name="push_notifications"
-                  defaultChecked={profile?.preferences?.notifications?.push ?? false}
-                  className="w-6 h-6 border-2 border-border accent-accent"
-                />
-              </div>
+              <PushNotificationToggle
+                enabled={pushEnabled}
+                onToggle={(enabled) => {
+                  console.log(enabled)
+                  setPushEnabled(enabled)
+                  if(checkboxRef.current && checkboxRef.current.checked !== enabled){
+                    checkboxRef.current.checked = enabled
+                  }
+                }}
+              />
+              {/* Hidden checkbox for form submission */}
+              <input
+                ref={checkboxRef}
+                type="checkbox"
+                id="push_notifications"
+                name="push_notifications"
+                defaultChecked={profile?.preferences?.notifications?.push ?? false}
+                className="hidden"
+              />
 
               <div className="p-4 border-2 border-border bg-muted/30">
                 <p className="font-bold mb-2">Reminder Schedule</p>
@@ -241,7 +250,9 @@ export default function SettingsClient({
           <p className="text-muted-foreground mb-4">
             Permanently delete your account and all associated data. This action cannot be undone.
           </p>
-          <button className="px-6 py-3 font-bold border-2 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors">
+          <button onClick={() => {
+            alert("Feature not implemented yet")
+          }} className="px-6 py-3 font-bold border-2 border-destructive text-destructive hover:bg-destructive hover:text-white transition-colors">
             Delete Account
           </button>
         </div>

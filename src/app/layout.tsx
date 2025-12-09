@@ -23,8 +23,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" >
       <body
+        suppressHydrationWarning
         className={`${spaceGrotesk.variable} ${dmSans.variable} antialiased font-body bg-background text-foreground`}
       >
         {children}

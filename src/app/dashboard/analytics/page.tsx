@@ -1,6 +1,6 @@
+import AnalyticsClient from '@/components/dashboard/analytics-client'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import AnalyticsClient from './analytics-client'
 
 export default async function AnalyticsPage() {
   const supabase = await createClient()

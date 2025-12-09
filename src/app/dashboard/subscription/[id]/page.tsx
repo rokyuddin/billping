@@ -1,6 +1,6 @@
+import SubscriptionDetailClient from '@/components/dashboard/subscription-detail-client'
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
-import SubscriptionDetailClient from './subscription-detail-client'
 
 export default async function SubscriptionDetailPage({
   params,
