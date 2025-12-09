@@ -24,6 +24,7 @@ export async function createSubscription(formData: FormData) {
     billing_cycle: formData.get('billing_cycle') as string,
     next_billing_date: formData.get('next_billing_date') as string,
     website_url: formData.get('website_url') as string || null,
+    receipt_url: formData.get('receipt_url') as string || null,
     status: 'active',
   }
 

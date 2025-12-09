@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Edit, Trash2, ExternalLink, Calendar, DollarSign } from 'lucide-react'
+import { ArrowLeft, Edit, Trash2, ExternalLink, Calendar, DollarSign, FileText } from 'lucide-react'
 import { updateSubscription, deleteSubscription } from '@/app/actions/subscriptions'
 import { format } from 'date-fns'
 
@@ -17,6 +17,7 @@ type Subscription = {
   status: string
   website_url: string | null
   logo_url: string | null
+  receipt_url: string | null
 }
 
 type Payment = {
@@ -74,7 +75,7 @@ export default function SubscriptionDetailClient({
                 </button>
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="px-4 py-2 font-bold border-2 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors flex items-center gap-2"
+                  className="px-4 py-2 font-bold border-2 border-destructive text-destructive hover:bg-destructive hover:text-white transition-colors flex items-center gap-2"
                 >
                   <Trash2 className="w-4 h-4" /> Delete
                 </button>
@@ -149,9 +150,22 @@ export default function SubscriptionDetailClient({
                     href={subscription.website_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 font-bold hover:underline decoration-2 underline-offset-4"
+                    className="inline-flex items-center gap-2 font-bold hover:underline decoration-2 underline-offset-4 mr-6"
                   >
                     Visit Website <ExternalLink className="w-4 h-4" />
+                  </a>
+                </div>
+              )}
+
+              {subscription.receipt_url && (
+                <div className={subscription.website_url ? "mt-2" : "mt-6 pt-6 border-t-2 border-border"}>
+                  <a
+                    href={subscription.receipt_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 font-bold hover:underline decoration-2 underline-offset-4"
+                  >
+                    View Receipt <FileText className="w-4 h-4" />
                   </a>
                 </div>
               )}

@@ -40,6 +40,11 @@ type Profile = {
   email: string | null
   full_name: string | null
   avatar_url: string | null
+  budget_goal?: number | null
+  preferences: {
+    currency?: string
+    theme?: string
+  }
 }
 
 type SortOption = 'name' | 'amount' | 'next_billing_date' | 'category'
@@ -108,6 +113,14 @@ export default function DashboardClient({
 
   // Current date for display purposes
   const today = new Date()
+
+  // Currency helper
+  const currencyCode = profile?.preferences?.currency || 'USD'
+  const currencySymbol = currencyCode === 'EUR' ? '€' : currencyCode === 'GBP' ? '£' : currencyCode === 'BDT' ? '৳' : '$'
+
+  const formatCurrency = (amount: number) => {
+    return `${currencySymbol}${amount.toFixed(2)}`
+  }
 
   // Filter and sort subscriptions
   const filteredSubscriptions = useMemo(() => {
@@ -325,7 +338,7 @@ export default function DashboardClient({
                 <DollarSign className="w-5 h-5 text-white" />
               </div>
             </div>
-            <p className="font-heading text-4xl font-bold">${monthlyTotal.toFixed(2)}</p>
+            <p className="font-heading text-4xl font-bold">{formatCurrency(monthlyTotal)}</p>
             <p className="text-sm text-muted-foreground mt-1">per month</p>
           </div>
 
@@ -336,7 +349,7 @@ export default function DashboardClient({
                 <TrendingUp className="w-5 h-5 text-black" />
               </div>
             </div>
-            <p className="font-heading text-4xl font-bold">${yearlyTotal.toFixed(2)}</p>
+            <p className="font-heading text-4xl font-bold">{formatCurrency(yearlyTotal)}</p>
             <p className="text-sm text-muted-foreground mt-1">per year</p>
           </div>
 
@@ -365,6 +378,29 @@ export default function DashboardClient({
           </div>
         </div>
 
+        {/* Budget Goal Progress */}
+        {profile?.budget_goal && (
+          <div className="brutal-card p-6 bg-card mb-8">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-heading font-bold text-lg">MONTHLY BUDGET</h3>
+              <p className="font-bold">
+                {formatCurrency(monthlyTotal)} <span className="text-muted-foreground">/ {formatCurrency(profile.budget_goal)}</span>
+              </p>
+            </div>
+            <div className="w-full h-4 bg-muted border-2 border-border rounded-full overflow-hidden">
+              <div 
+                className={`h-full transition-all duration-500 ${
+                  monthlyTotal > profile.budget_goal ? 'bg-destructive' : 'bg-primary'
+                }`}
+                style={{ width: `${Math.min((monthlyTotal / profile.budget_goal) * 100, 100)}%` }}
+              />
+            </div>
+            <p className="text-sm text-muted-foreground mt-2 text-right">
+              {Math.round((monthlyTotal / profile.budget_goal) * 100)}% used
+            </p>
+          </div>
+        )}
+
         {/* Overdue Bills Alert */}
         {overdueSubscriptions.length > 0 && (
           <div className="mb-8">
@@ -390,7 +426,7 @@ export default function DashboardClient({
                             </p>
                           </div>
                         </div>
-                        <p className="font-heading font-bold text-lg">${sub.amount.toFixed(2)}</p>
+                        <p className="font-heading font-bold text-lg">{formatCurrency(sub.amount)}</p>
                       </div>
                     </Link>
                   )
@@ -420,7 +456,7 @@ export default function DashboardClient({
                           </p>
                         </div>
                       </div>
-                      <p className="font-heading font-bold text-lg">${sub.amount.toFixed(2)}</p>
+                      <p className="font-heading font-bold text-lg">{formatCurrency(sub.amount)}</p>
                     </div>
                   </Link>
                 ))}
@@ -615,7 +651,7 @@ export default function DashboardClient({
                         <p className="text-sm text-muted-foreground mb-3">{sub.category}</p>
                       )}
                       <div className="flex items-baseline gap-1 mb-2">
-                        <span className="font-heading text-3xl font-bold">${sub.amount.toFixed(2)}</span>
+                        <span className="font-heading text-3xl font-bold">{formatCurrency(sub.amount)}</span>
                         <span className="text-sm text-muted-foreground">/ {sub.billing_cycle}</span>
                       </div>
                       <p className={`text-sm ${isOverdue ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>

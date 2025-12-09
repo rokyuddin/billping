@@ -7,12 +7,14 @@ import { useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import PushNotificationToggle from '@/components/push-notification-toggle'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 type Profile = {
   id: string
   email: string | null
   full_name: string | null
   avatar_url: string | null
+  budget_goal?: number | null
   preferences: {
     currency?: string
     theme?: string
@@ -47,6 +49,7 @@ export default function SettingsClient({
 
     const updates = {
       full_name: formData.get('full_name') as string,
+      budget_goal: formData.get('budget_goal') ? parseFloat(formData.get('budget_goal') as string) : null,
       preferences: {
         currency: formData.get('currency') as string,
         theme: formData.get('theme') as string,
@@ -159,20 +162,27 @@ export default function SettingsClient({
               </div>
 
               <div>
+                <label className="block font-bold mb-2 text-sm uppercase" htmlFor="budget_goal">
+                  Monthly Budget Goal
+                </label>
+                <input
+                  type="number"
+                  id="budget_goal"
+                  name="budget_goal"
+                  defaultValue={profile?.budget_goal || ''}
+                  className="w-full p-3 border-2 border-border bg-input focus:outline-none focus:ring-2 focus:ring-ring/50 font-mono"
+                  placeholder="e.g. 500"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Set a target for your monthly subscription spending</p>
+              </div>
+
+              <div>
                 <label className="block font-bold mb-2 text-sm uppercase" htmlFor="theme">
                   Theme
                 </label>
-                <select
-                  id="theme"
-                  name="theme"
-                  defaultValue={profile?.preferences?.theme || 'light'}
-                  className="w-full p-3 border-2 border-border bg-input focus:outline-none focus:ring-2 focus:ring-ring/50 font-mono"
-                >
-                  <option value="light">Light</option>
-                  <option value="dark">Dark</option>
-                  <option value="system">System</option>
-                </select>
-                <p className="text-xs text-muted-foreground mt-1">Theme switching coming soon</p>
+                <div className="mt-2">
+                  <ThemeToggle />
+                </div>
               </div>
             </div>
           </div>
