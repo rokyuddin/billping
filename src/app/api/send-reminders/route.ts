@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import webpush from 'web-push'
-import { Resend } from 'resend';
+import { transporter } from '@/lib/nodemailer-setup';
 
 
 
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     // Get subscriptions that need reminders
     const { data: subscriptions, error: subsError } = await supabaseClient
       .from('subscriptions')
-      .select('*, profiles!inner(email, full_name, preferences)')
+      .select('*, profiles!inner(email, full_name, preferences, push_subscription)')
       .eq('status', 'active')
       .or(
         `next_billing_date.eq.${oneDayFromNow.toISOString().split('T')[0]},next_billing_date.eq.${threeDaysFromNow.toISOString().split('T')[0]},next_billing_date.eq.${sevenDaysFromNow.toISOString().split('T')[0]}`
@@ -86,12 +86,6 @@ export async function POST(request: NextRequest) {
 
     const emailsSent: Array<{ subscription: string; user: string; daysUntil: number }> = []
     const errors: Array<{ subscription: string; error: unknown }> = []
-
-        const resendApiKey = process.env.RESEND_API_KEY
-        if (!resendApiKey) {
-          throw new Error('RESEND_API_KEY is not configured')
-        }
-    const resend = new Resend(resendApiKey);
 
 
     // Process each subscription
@@ -113,11 +107,11 @@ export async function POST(request: NextRequest) {
 
       // Send email via Resend
       try {
-        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://billping.app'
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bill-ping.vercel.app'
 
-       const emailResponse = await resend.emails.send({
-          from: 'BillPing <onboarding@resend.dev>',
-          to: ['rokyuddin.dev@gmail.com'],
+    const emailResponse = await transporter.sendMail({
+          from: 'BillPing <rokyuddin.dev@gmail.com>',
+          to: [profile.email],
           subject: `Reminder: ${sub.name} payment in ${daysUntil} day${daysUntil > 1 ? 's' : ''}`,
  html: `
               <!DOCTYPE html>
@@ -168,11 +162,10 @@ export async function POST(request: NextRequest) {
             `,
         })
 
-        
-        if (!emailResponse.error) {
+        if (!emailResponse.rejected) {
           emailsSent.push({ subscription: sub.name, user: profile.email, daysUntil })
         } else {
-          errors.push({ subscription: sub.name, error: emailResponse.error })
+          errors.push({ subscription: sub.name, error: emailResponse.rejected })
         }
       } catch (emailError) {
         errors.push({
@@ -180,6 +173,8 @@ export async function POST(request: NextRequest) {
           error: emailError instanceof Error ? emailError.message : 'Unknown error',
         })
       }
+
+      console.log(profile)
 
       // Send push notification if enabled
       if (profile.preferences?.notifications?.push && (profile as any).push_subscription) {
