@@ -27,7 +27,7 @@ export default async function Home() {
             <Link href="#pricing" className="hover:underline decoration-2 underline-offset-4">Pricing</Link>
             <Link href="#faq" className="hover:underline decoration-2 underline-offset-4">FAQ</Link>
           </nav>
-<AuthButtons user={user} />
+          <AuthButtons user={user} />
         </div>
       </header>
 
