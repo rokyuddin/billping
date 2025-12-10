@@ -1,6 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import webpush from 'web-push'
+import { Resend } from 'resend';
+
 
 
 webpush.setVapidDetails(
@@ -36,6 +39,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+
+
 export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders })
 }
@@ -45,7 +50,7 @@ export async function POST(request: NextRequest) {
     // Optional: Add API key verification for security
     const authHeader = request.headers.get('authorization')
     const expectedApiKey = process.env.CRON_SECRET
-    
+
     if (expectedApiKey && authHeader !== `Bearer ${expectedApiKey}`) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -75,10 +80,19 @@ export async function POST(request: NextRequest) {
         `next_billing_date.eq.${oneDayFromNow.toISOString().split('T')[0]},next_billing_date.eq.${threeDaysFromNow.toISOString().split('T')[0]},next_billing_date.eq.${sevenDaysFromNow.toISOString().split('T')[0]}`
       )
 
+
+
     if (subsError) throw subsError
 
     const emailsSent: Array<{ subscription: string; user: string; daysUntil: number }> = []
     const errors: Array<{ subscription: string; error: unknown }> = []
+
+        const resendApiKey = process.env.RESEND_API_KEY
+        if (!resendApiKey) {
+          throw new Error('RESEND_API_KEY is not configured')
+        }
+    const resend = new Resend(resendApiKey);
+
 
     // Process each subscription
     for (const sub of subscriptions as Array<Subscription & { profiles: Profile }>) {
@@ -95,26 +109,17 @@ export async function POST(request: NextRequest) {
         (billingDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
       )
 
+
+
       // Send email via Resend
       try {
-        const resendApiKey = process.env.RESEND_API_KEY
-        if (!resendApiKey) {
-          throw new Error('RESEND_API_KEY is not configured')
-        }
-
         const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://billping.app'
 
-        const emailResponse = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${resendApiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            from: 'BillPing <reminders@billping.app>',
-            to: [profile.email],
-            subject: `Reminder: ${sub.name} payment in ${daysUntil} day${daysUntil > 1 ? 's' : ''}`,
-            html: `
+       const emailResponse = await resend.emails.send({
+          from: 'BillPing <onboarding@resend.dev>',
+          to: ['rokyuddin.dev@gmail.com'],
+          subject: `Reminder: ${sub.name} payment in ${daysUntil} day${daysUntil > 1 ? 's' : ''}`,
+ html: `
               <!DOCTYPE html>
               <html>
                 <head>
@@ -124,7 +129,7 @@ export async function POST(request: NextRequest) {
                     .header { background: #0f0f0f; color: #ffffff; padding: 20px; text-align: center; border: 2px solid #0f0f0f; }
                     .content { background: #ffffff; padding: 30px; border: 2px solid #0f0f0f; border-top: none; }
                     .amount { font-size: 32px; font-weight: bold; color: #ec4899; margin: 20px 0; }
-                    .button { display: inline-block; background: #0f0f0f; color: #ffffff; padding: 12px 24px; text-decoration: none; font-weight: bold; border: 2px solid #0f0f0f; box-shadow: 4px 4px 0px 0px #0f0f0f; margin: 20px 0; }
+                    .button { display: inline-block; background: #0f0f0f; color: #ffffff; padding: 12px 24px; text-decoration: none; font-weight: bold; border: 2px solid #0f0f0f; box-shadow: 4px 4px 0px 0px #ec4899; margin: 20px 0; }
                     .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
                   </style>
                 </head>
@@ -134,7 +139,7 @@ export async function POST(request: NextRequest) {
                       <h1 style="margin: 0; font-size: 24px;">💸 BILLPING REMINDER</h1>
                     </div>
                     <div class="content">
-                      <p>Hey ${profile.full_name || 'there'},</p>
+                      <h3>Hey ${profile.full_name || 'there'},</h3>
                       <p>Just a heads up: your <strong>${sub.name}</strong> subscription is coming up!</p>
                       
                       <div class="amount">
@@ -145,7 +150,7 @@ export async function POST(request: NextRequest) {
                       
                       <p>Want to review or cancel? Head to your dashboard:</p>
                       
-                      <a href="${siteUrl}/dashboard/subscription/${sub.id}" class="button">
+                      <a href="${siteUrl}/dashboard/subscription/${sub.id}" class="button" style="color: #ffffff;">
                         View Subscription
                       </a>
                       
@@ -161,14 +166,13 @@ export async function POST(request: NextRequest) {
                 </body>
               </html>
             `,
-          }),
         })
 
-        if (!emailResponse.ok) {
-          const errorData = await emailResponse.json()
-          errors.push({ subscription: sub.name, error: errorData })
-        } else {
+        
+        if (!emailResponse.error) {
           emailsSent.push({ subscription: sub.name, user: profile.email, daysUntil })
+        } else {
+          errors.push({ subscription: sub.name, error: emailResponse.error })
         }
       } catch (emailError) {
         errors.push({
